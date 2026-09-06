@@ -105,11 +105,6 @@
   }
   #headerActions{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
   #statusText{ font-size:11.5px; color:var(--muted); }
-  #voiceSelect{
-    background: var(--panel); border: 1px solid var(--border); color: var(--muted);
-    font-size: 12px; border-radius: 8px; padding: 5px 8px; max-width: 130px; outline:none;
-  }
-  #voiceSelect:focus{ border-color: var(--denim); }
   .hdrBtn{
     background: var(--panel); border: 1px solid var(--border); color: var(--muted);
     font-size: 12px; border-radius: 8px; padding: 6px 10px; cursor:pointer; white-space:nowrap;
@@ -162,6 +157,7 @@
 
   /* ---------- Input bar ---------- */
   #inputBar{
+    margin-bottom: max(0px, var(--keyboard-height, 0px));
     flex-shrink:0; display:flex; align-items:flex-end; gap:8px;
     padding: 10px 20px max(16px, env(safe-area-inset-bottom));
     background: linear-gradient(to top, rgba(18,19,28,.98), rgba(18,19,28,.82), transparent);
@@ -240,11 +236,20 @@
   .searchResultItem .srUrl{ font-size:11px; color:var(--denim); word-break:break-all; }
   .searchResultItem .srSnippet{ font-size:12px; color:var(--muted); margin-top:2px; line-height:1.4; }
 
+  /* ---------- Melhorias de interação ---------- */
+  button, input, textarea, select{ -webkit-tap-highlight-color: transparent; }
+  button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible{ outline:2px solid var(--denim); outline-offset:2px; }
+  #chatWrap{ scroll-behavior:smooth; }
+  .searchResultItem .srOpen{ display:inline-block; margin-top:5px; color:var(--denim); font-size:11px; text-decoration:none; }
+  .searchResultItem .srOpen:hover{ text-decoration:underline; }
+  #searchStatus.ok{ color:#8fd3a8; }
+  #searchStatus.err{ color:var(--warn); }
+
   /* ---------- Responsivo ---------- */
   @media (max-width: 760px){
     html, body{ width:100%; height:100%; overflow:hidden; }
     #app{ height:var(--vvh, 100dvh); }
-    #inputBar{ padding-bottom:max(28px, env(safe-area-inset-bottom)); }
+    #inputBar{ padding-bottom:calc(14px + env(safe-area-inset-bottom)); }
     #root, #app{ height:100dvh; min-height:100dvh; }
     #sidebar{ position:fixed; top:0; left:0; height:100%; z-index:70; width:78vw; max-width:300px; margin-left:-100%; box-shadow: 4px 0 20px rgba(0,0,0,.4); }
     #sidebar.open{ margin-left:0; }
@@ -254,7 +259,7 @@
     header{ padding: 10px 12px; }
     #chatWrap{ padding: 8px 12px 12px; }
     #inputBar{
-      padding: 8px 12px max(28px, env(safe-area-inset-bottom));
+      padding: 8px 12px calc(14px + env(safe-area-inset-bottom));
       gap:7px;
     }
     #textInput{ font-size:16px; min-height:42px; line-height:1.35; }
@@ -264,7 +269,6 @@
     #headerActions{ gap:6px; flex-wrap:nowrap; overflow-x:auto; max-width:72vw; scrollbar-width:none; }
     #headerActions::-webkit-scrollbar{ display:none; }
     .hdrBtn{ min-height:34px; padding:7px 9px; }
-    #voiceSelect{ max-width:95px; min-height:34px; }
     .modal{
       width:94vw; max-height:88dvh; padding:14px;
       border-radius:12px;
@@ -289,7 +293,6 @@
   @media (max-width: 360px){
     #nameInput{ width:90px; }
     .hdrBtn{ padding:6px 7px; font-size:11px; }
-    #voiceSelect{ max-width:85px; }
   }
 </style>
 </head>
@@ -317,7 +320,6 @@
         </div>
         <div id="headerActions">
           <span id="statusText">verificando…</span>
-          <select id="voiceSelect" title="Escolher voz"></select>
           <label class="hdrBtn" style="display:flex;align-items:center;gap:5px;cursor:pointer;">
             <input type="checkbox" id="autoSearchToggle" style="cursor:pointer;">
             Auto-pesquisa
@@ -449,7 +451,6 @@ const els = {
   statusDot: document.getElementById('statusDot'),
   statusText: document.getElementById('statusText'),
   nameInput: document.getElementById('nameInput'),
-  voiceSelect: document.getElementById('voiceSelect'),
   autoSearchToggle: document.getElementById('autoSearchToggle'),
   autoMemoryToggle: document.getElementById('autoMemoryToggle'),
 
@@ -485,9 +486,6 @@ const els = {
 
 let pendingImage = null;
 let pendingSearchContext = null; // { text, sources: [{title,url}] }
-let speaking = false;
-let lipInterval = null;
-let idleBlinkTimer = null;
 
 let currentChatId = null;
 let chats = [];       // cache em memória, sincronizado com IndexedDB
@@ -782,65 +780,18 @@ function relevantMemories(userText, max = 5){
   return scored.slice(0, max).map(s => s.mem);
 }
 
-// ================= Avatar / TTS (igual antes) =================
+// ================= Avatar / animação =================
+let speaking = false;
+let idleBlinkTimer = null;
 function setFrame(frame){ els.avatar.src = AVATAR[frame]; }
-function startTalking(){
-  speaking = true;
-  els.avatar.classList.add('talking');
-  const frames = ['closed','semi','open','semi'];
-  let i = 0;
-  lipInterval = setInterval(() => { setFrame(frames[i % frames.length]); i++; }, 160);
-}
-function stopTalking(){ speaking = false; els.avatar.classList.remove('talking'); clearInterval(lipInterval); setFrame('closed'); }
 function scheduleBlink(){
   idleBlinkTimer = setTimeout(() => {
-    if(!speaking){ setFrame('blink'); setTimeout(() => { if(!speaking) setFrame('closed'); }, 160); }
+    setFrame('blink');
+    setTimeout(() => setFrame('closed'), 160);
     scheduleBlink();
   }, 2500 + Math.random()*3500);
 }
 scheduleBlink();
-
-let allVoices = [];
-function populateVoiceList(){
-  allVoices = window.speechSynthesis.getVoices();
-  if(!allVoices.length) return;
-  const savedVoiceURI = localStorage.getItem('kasane_voice');
-  els.voiceSelect.innerHTML = '';
-  const pt = allVoices.filter(v => v.lang.startsWith('pt'));
-  const others = allVoices.filter(v => !v.lang.startsWith('pt'));
-  [...pt, ...others].forEach(v => {
-    const opt = document.createElement('option');
-    opt.value = v.voiceURI;
-    opt.textContent = `${v.name} (${v.lang})`;
-    els.voiceSelect.appendChild(opt);
-  });
-  if(savedVoiceURI && allVoices.some(v => v.voiceURI === savedVoiceURI)){
-    els.voiceSelect.value = savedVoiceURI;
-  } else {
-    const defaultVoice = pt.find(v => v.lang === 'pt-BR') || pt[0] || allVoices[0];
-    if(defaultVoice) els.voiceSelect.value = defaultVoice.voiceURI;
-  }
-}
-window.speechSynthesis.onvoiceschanged = populateVoiceList;
-populateVoiceList();
-els.voiceSelect.addEventListener('change', () => {
-  localStorage.setItem('kasane_voice', els.voiceSelect.value);
-  speak('Oi! É assim que eu vou soar agora.');
-});
-function getSelectedVoice(){ return allVoices.find(v => v.voiceURI === els.voiceSelect.value) || null; }
-function speak(text){
-  if(!('speechSynthesis' in window)) return;
-  const clean = text.replace(/[*_`#>]/g, '');
-  const utter = new SpeechSynthesisUtterance(clean);
-  const chosen = getSelectedVoice();
-  if(chosen){ utter.voice = chosen; utter.lang = chosen.lang; } else { utter.lang = 'pt-BR'; }
-  utter.rate = 1.02;
-  utter.onstart = startTalking;
-  utter.onend = stopTalking;
-  utter.onerror = stopTalking;
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.speak(utter);
-}
 
 // ================= Render de mensagens =================
 function renderCurrentChat(){
@@ -848,7 +799,7 @@ function renderCurrentChat(){
   const chat = getCurrentChat();
   if(!chat) return;
   if(!chat.messages.length){
-    addSystemBubble('Converse com a Kasane, mande imagens pra ela analisar, ou use "🔍 Pesquisar" pra ela buscar informações atuais. Use "🎓 Memória" pra ver ou ensinar o que ela deve lembrar.');
+    addSystemBubble('Converse com a Kasane, mande uma imagem para ela analisar, use 🔍 Pesquisar para buscar informações atuais ou 🎓 Memória para ensinar o que ela deve lembrar.');
     return;
   }
   chat.messages.forEach(m => renderStoredMessage(m));
@@ -1174,7 +1125,6 @@ async function sendMessage(){
       chat.messages.push(aiMsg);
       renderStoredMessage(aiMsg);
       await saveCurrentChat();
-      speak(reply);
       maybeSummarize(chat);
     }catch(err){
       removeTyping();
@@ -1205,11 +1155,19 @@ els.searchCancel.addEventListener('click', closeSearchModal);
 els.searchOverlay.addEventListener('click', (e) => { if(e.target === els.searchOverlay) closeSearchModal(); });
 
 async function runSearch(){
-  const query = els.searchQueryInput.value.trim();
-  if(!query) return;
+  const query = els.searchQueryInput.value.trim().slice(0, 300);
+  if(!query){
+    els.searchStatus.className = 'err';
+    els.searchStatus.textContent = 'Digite algo para pesquisar.';
+    return;
+  }
+  els.searchQueryInput.value = query;
   els.searchResults.innerHTML = '';
   els.searchUse.disabled = true;
-  els.searchStatus.textContent = 'Buscando na internet...';
+  els.searchStatus.className = '';
+  els.searchStatus.textContent = '🔎 Buscando na internet...';
+  els.searchGoBtn.disabled = true;
+  els.searchGoBtn.textContent = 'Buscando…';
   try{
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 15000);
@@ -1222,16 +1180,22 @@ async function runSearch(){
     if(!res.ok) throw new Error(data?.error || `Erro HTTP ${res.status}`);
     const results = Array.isArray(data.results) ? data.results : [];
     if(!results.length){
+      els.searchStatus.className = 'err';
       els.searchStatus.textContent = data.error || 'Nenhum resultado encontrado.';
       return;
     }
     currentResults = results;
     renderResults(results);
-    els.searchStatus.textContent = `${results.length} resultado(s) encontrados.`;
+    els.searchStatus.className = 'ok';
+    els.searchStatus.textContent = `✓ ${results.length} resultado(s) encontrados.`;
   }catch(err){
+    els.searchStatus.className = 'err';
     els.searchStatus.textContent = err?.name === 'AbortError'
       ? 'A pesquisa demorou demais. Tente novamente.'
       : 'A pesquisa está temporariamente indisponível. Tente novamente em alguns segundos.';
+  }finally{
+    els.searchGoBtn.disabled = false;
+    els.searchGoBtn.textContent = 'Buscar';
   }
 }
 function renderResults(results){
@@ -1239,7 +1203,7 @@ function renderResults(results){
   results.forEach((r, i) => {
     const item = document.createElement('div');
     item.className = 'searchResultItem';
-    item.innerHTML = `<input type="checkbox" data-idx="${i}"><div><div class="srTitle"></div><div class="srUrl"></div><div class="srSnippet"></div></div>`;
+    item.innerHTML = `<input type="checkbox" data-idx="${i}"><div><div class="srTitle"></div><div class="srUrl"></div><div class="srSnippet"></div><a class="srOpen" href="${r.url}" target="_blank" rel="noopener noreferrer">Abrir fonte ↗</a></div>`;
     item.querySelector('.srTitle').textContent = r.title;
     item.querySelector('.srUrl').textContent = r.url;
     item.querySelector('.srSnippet').textContent = r.snippet;
@@ -1250,7 +1214,7 @@ function renderResults(results){
       item.classList.toggle('selected', checkbox.checked);
       els.searchUse.disabled = selectedIndexes.size === 0;
     };
-    item.addEventListener('click', (e) => { if(e.target !== checkbox) toggle(); });
+    item.addEventListener('click', (e) => { if(e.target !== checkbox && !e.target.closest('.srOpen')) toggle(); });
     checkbox.addEventListener('click', (e) => {
       e.stopPropagation();
       item.classList.toggle('selected', checkbox.checked);

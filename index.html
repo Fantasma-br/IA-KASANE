@@ -33,7 +33,8 @@
 
   /* ---------- Layout raiz ---------- */
   #root{
-    display:flex; height:100vh; width:100vw;
+    display:flex; height:100dvh; min-height:100vh; width:100vw;
+    min-height:0;
   }
 
   /* ---------- Sidebar ---------- */
@@ -81,7 +82,10 @@
 
   /* ---------- Main ---------- */
   #main{ flex:1; display:flex; flex-direction:column; min-width:0; }
-  #app{ display:flex; flex-direction:column; height:100vh; max-width:1100px; margin:0 auto; width:100%; }
+  #app{
+    display:flex; flex-direction:column; height:100dvh; min-height:0;
+    max-width:1100px; margin:0 auto; width:100%;
+  }
 
   header{
     display:flex; align-items:center; justify-content:space-between;
@@ -130,7 +134,11 @@
   @keyframes bob{ from{ transform: translateY(0); } to{ transform: translateY(-4px); } }
 
   /* ---------- Chat ---------- */
-  #chatWrap{ flex:1; overflow-y:auto; padding: 8px 20px 12px; display:flex; flex-direction:column; gap:10px; }
+  #chatWrap{
+    flex:1 1 auto; min-height:0; overflow-y:auto;
+    padding: 8px 20px 12px; display:flex; flex-direction:column; gap:10px;
+    overscroll-behavior:contain; -webkit-overflow-scrolling:touch;
+  }
   .msg{ max-width: 74%; padding: 10px 14px; border-radius: 16px; line-height:1.45; font-size:14.5px; white-space:pre-wrap; }
   .msg.user{ align-self:flex-end; background: var(--bubble-user); border-bottom-right-radius:4px; }
   .msg.ai{ align-self:flex-start; background: var(--bubble-ai); border-bottom-left-radius:4px; }
@@ -153,7 +161,12 @@
   @keyframes blink{ 0%,80%,100%{opacity:.25;} 40%{opacity:1;} }
 
   /* ---------- Input bar ---------- */
-  #inputBar{ flex-shrink:0; display:flex; align-items:flex-end; gap:8px; padding: 10px 20px 16px; }
+  #inputBar{
+    flex-shrink:0; display:flex; align-items:flex-end; gap:8px;
+    padding: 10px 20px max(16px, env(safe-area-inset-bottom));
+    background: linear-gradient(to top, rgba(18,19,28,.98), rgba(18,19,28,.82), transparent);
+    position:relative; z-index:5;
+  }
   #preview{ display:none; position:relative; margin-bottom:6px; }
   #preview img{ height:52px; border-radius:8px; display:block; }
   #preview button{ position:absolute; top:-6px; right:-6px; width:18px; height:18px; border-radius:50%; background:#ef4444; color:#fff; border:none; font-size:11px; cursor:pointer; line-height:18px; padding:0; }
@@ -175,7 +188,12 @@
   /* ---------- Modais genéricos ---------- */
   .overlay{ display:none; position:fixed; inset:0; background: rgba(10,10,15,.6); align-items:center; justify-content:center; z-index: 60; }
   .overlay.open{ display:flex; }
-  .modal{ background: var(--panel); border: 1px solid var(--border); border-radius: 14px; width: min(560px, 92vw); max-height: 84vh; padding: 18px; display:flex; flex-direction:column; }
+  .modal{
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 14px; width: min(560px, 92vw);
+    max-height: min(84vh, 84dvh); padding: 18px;
+    display:flex; flex-direction:column; min-height:0;
+  }
   .modal h2{ margin:0 0 6px; font-size:15px; color:var(--text); }
   .modal p.hint{ margin:0 0 10px; font-size:12.5px; color:var(--muted); line-height:1.4; }
   .modalActions{ display:flex; justify-content:flex-end; gap:8px; margin-top:12px; flex-wrap:wrap; }
@@ -210,7 +228,13 @@
   #searchGoBtn{ background: var(--denim); color:#fff; border:none; border-radius:10px; padding: 8px 14px; font-size:13px; cursor:pointer; font-weight:600; }
   #searchStatus{ font-size:12px; color:var(--muted); margin-bottom:8px; min-height:16px; }
   #searchResults{ overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:8px; margin-bottom: 12px; }
-  .searchResultItem{ display:flex; gap:8px; align-items:flex-start; background: var(--bg-soft); border: 1px solid var(--border); border-radius: 10px; padding: 10px; cursor:pointer; }
+  .searchResultItem{
+    display:flex; gap:8px; align-items:flex-start; background: var(--bg-soft);
+    border: 1px solid var(--border); border-radius: 10px; padding: 10px; cursor:pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .searchResultItem:hover{ border-color:var(--denim); }
+  .searchResultItem.selected{ background:var(--denim-dim); border-color:var(--denim); }
   .searchResultItem input{ margin-top:3px; flex-shrink:0; }
   .searchResultItem .srTitle{ font-size:13px; font-weight:600; color:var(--text); }
   .searchResultItem .srUrl{ font-size:11px; color:var(--denim); word-break:break-all; }
@@ -218,6 +242,10 @@
 
   /* ---------- Responsivo ---------- */
   @media (max-width: 760px){
+    html, body{ width:100%; height:100%; overflow:hidden; }
+    #app{ height:var(--vvh, 100dvh); }
+    #inputBar{ padding-bottom:max(28px, env(safe-area-inset-bottom)); }
+    #root, #app{ height:100dvh; min-height:100dvh; }
     #sidebar{ position:fixed; top:0; left:0; height:100%; z-index:70; width:78vw; max-width:300px; margin-left:-100%; box-shadow: 4px 0 20px rgba(0,0,0,.4); }
     #sidebar.open{ margin-left:0; }
     #hamburger{ display:inline-block; }
@@ -225,13 +253,43 @@
     #sidebarOverlay.open{ display:block; }
     header{ padding: 10px 12px; }
     #chatWrap{ padding: 8px 12px 12px; }
-    #inputBar{ padding: 8px 12px 14px; }
+    #inputBar{
+      padding: 8px 12px max(28px, env(safe-area-inset-bottom));
+      gap:7px;
+    }
+    #textInput{ font-size:16px; min-height:42px; line-height:1.35; }
+    .iconbtn, #sendBtn{ width:44px; height:44px; min-width:44px; }
+
     .msg{ max-width: 86%; }
     #headerActions{ gap:6px; flex-wrap:nowrap; overflow-x:auto; max-width:72vw; scrollbar-width:none; }
     #headerActions::-webkit-scrollbar{ display:none; }
     .hdrBtn{ min-height:34px; padding:7px 9px; }
     #voiceSelect{ max-width:95px; min-height:34px; }
-    .modal{ width: 94vw; padding:14px; }
+    .modal{
+      width:94vw; max-height:88dvh; padding:14px;
+      border-radius:12px;
+    }
+    #searchQueryRow{ flex-direction:column; }
+    #searchGoBtn{ min-height:42px; }
+    #searchResults{ min-height:0; }
+    .modalActions button{ min-height:42px; }
+    #memAddRow{ flex-wrap:wrap; }
+    #memAddText{ min-width:100%; }
+    #memAddCategory, #memAddBtn{ flex:1; min-height:42px; }
+  }
+  @media (max-width: 420px){
+    header{ padding:8px 8px; }
+    #headerActions{ max-width:70vw; }
+    #statusText{ display:none; }
+    #chatWrap{ padding-left:8px; padding-right:8px; }
+    .msg{ max-width:92%; font-size:14px; }
+    #inputBar{ padding-left:8px; padding-right:8px; }
+    #avatarImg{ max-width:88vw; }
+  }
+  @media (max-width: 360px){
+    #nameInput{ width:90px; }
+    .hdrBtn{ padding:6px 7px; font-size:11px; }
+    #voiceSelect{ max-width:85px; }
   }
 </style>
 </head>
@@ -318,6 +376,10 @@
       <div id="searchQueryRow">
         <input id="searchQueryInput" placeholder="O que você quer pesquisar?">
         <button id="searchGoBtn">Buscar</button>
+      </div>
+      <div id="searchTools" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+        <button class="btnGhost" id="searchSelectAll" style="padding:6px 10px;font-size:12px;">Selecionar todos</button>
+        <button class="btnGhost" id="searchClearAll" style="padding:6px 10px;font-size:12px;">Limpar seleção</button>
       </div>
       <div id="searchStatus"></div>
       <div id="searchResults"></div>
@@ -412,6 +474,8 @@ const els = {
   searchResults: document.getElementById('searchResults'),
   searchCancel: document.getElementById('searchCancel'),
   searchUse: document.getElementById('searchUse'),
+  searchSelectAll: document.getElementById('searchSelectAll'),
+  searchClearAll: document.getElementById('searchClearAll'),
 
   renameOverlay: document.getElementById('renameOverlay'),
   renameInput: document.getElementById('renameInput'),
@@ -652,10 +716,23 @@ function renderMemList(){
   });
 }
 async function addMemory(text, category){
-  const mem = { id: uid(), text: text.trim(), category: category || 'outras', createdAt: Date.now() };
+  const clean = (text || '').trim().replace(/\s+/g, ' ');
+  if(!clean) return null;
+  const norm = normalizeMemoryText(clean);
+  const existing = memories.find(m => normalizeMemoryText(m.text) === norm);
+  if(existing){
+    if(category && existing.category !== category){
+      existing.category = category;
+      await idbPut('memories', existing);
+      renderMemList();
+    }
+    return existing;
+  }
+  const mem = { id: uid(), text: clean, category: category || 'outras', createdAt: Date.now() };
   memories.unshift(mem);
   await idbPut('memories', mem);
   renderMemList();
+  return mem;
 }
 els.memAddBtn.addEventListener('click', () => {
   const text = els.memAddText.value.trim();
@@ -685,16 +762,23 @@ function tokenize(s){
   return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !STOPWORDS.has(w));
 }
-function relevantMemories(userText, max = 4){
+function relevantMemories(userText, max = 5){
+  const qNorm = normalizeMemoryText(userText);
   const qWords = new Set(tokenize(userText));
   if(!qWords.size || !memories.length) return [];
   const scored = memories.map(mem => {
+    const mNorm = normalizeMemoryText(mem.text);
     const mWords = tokenize(mem.text);
     let score = 0;
-    mWords.forEach(w => { if(qWords.has(w)) score++; });
+    mWords.forEach(w => { if(qWords.has(w)) score += 1; });
+    if(mNorm && qNorm.includes(mNorm)) score += 4;
+    if(qNorm && mNorm.includes(qNorm)) score += 2;
+    // Small boost for important identity/project memories.
+    if(mem.category === 'sobre-mim' && /nome|chamo/.test(qNorm)) score += 3;
+    if(mem.category === 'projetos' && /projeto|jogo|roblox|criando|criar/.test(qNorm)) score += 2;
     return { mem, score };
   }).filter(s => s.score > 0);
-  scored.sort((a,b) => b.score - a.score);
+  scored.sort((a,b) => b.score - a.score || b.mem.createdAt - a.mem.createdAt);
   return scored.slice(0, max).map(s => s.mem);
 }
 
@@ -960,7 +1044,7 @@ function shouldAutoSearch(text){
   const t = normalizeMemoryText(text);
   if(!t || t.length < 5) return false;
   const explicit = /\b(pesquise|pesquisa|procure|buscar na internet|busque na internet|pesquisar na internet|veja na internet)\b/.test(t);
-  const current = /\b(hoje|agora|atualmente|recentemente|ultimas noticias|ultimas novidades|noticias|cotacao|preco atual|versao atual|lancamento|2026|esta semana|este mes|recentes|tempo agora|clima)\b/.test(t);
+  const current = /\b(hoje|agora|atualmente|recentemente|ultimas noticias|ultimas novidades|noticias|cotacao|preco atual|versao atual|lancamento|2026|esta semana|este mes|recentes|tempo agora|clima|placar|resultado de hoje|agenda de hoje|data de hoje)\b/.test(t);
   const factualLookup = /\b(quando foi lancado|qual e a versao|qual e o preco|quanto custa|quem e|o que aconteceu|onde fica|site oficial|link oficial)\b/.test(t);
   return explicit || current || factualLookup;
 }
@@ -1051,7 +1135,15 @@ async function sendMessage(){
     systemText += `\n\nResumo do que já foi conversado antes (parte mais antiga da conversa):\n${chat.summary}`;
   }
 
-  const contents = recent.map(m => ({ role: m.role, parts: m.parts }));
+  const contents = recent.map((m, index) => ({
+    role: m.role,
+    parts: (m.parts || []).map(part => {
+      if(part && part.inline_data && index < recent.length - 1){
+        return { text: '[imagem anterior enviada pelo usuário]' };
+      }
+      return part;
+    })
+  }));
 
   const doSend = async () => {
     try{
@@ -1119,7 +1211,13 @@ async function runSearch(){
   els.searchUse.disabled = true;
   els.searchStatus.textContent = 'Buscando na internet...';
   try{
-    const res = await fetch(`${SEARCH_API_URL}?q=${encodeURIComponent(query)}`, { headers: { 'Accept':'application/json' } });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    const res = await fetch(`${SEARCH_API_URL}?q=${encodeURIComponent(query)}`, {
+      headers: { 'Accept':'application/json' },
+      signal: controller.signal
+    });
+    clearTimeout(timer);
     const data = await res.json();
     if(!res.ok) throw new Error(data?.error || `Erro HTTP ${res.status}`);
     const results = Array.isArray(data.results) ? data.results : [];
@@ -1131,7 +1229,9 @@ async function runSearch(){
     renderResults(results);
     els.searchStatus.textContent = `${results.length} resultado(s) encontrados.`;
   }catch(err){
-    els.searchStatus.textContent = 'Não consegui pesquisar agora. Tente novamente em alguns segundos.';
+    els.searchStatus.textContent = err?.name === 'AbortError'
+      ? 'A pesquisa demorou demais. Tente novamente.'
+      : 'A pesquisa está temporariamente indisponível. Tente novamente em alguns segundos.';
   }
 }
 function renderResults(results){
@@ -1147,11 +1247,13 @@ function renderResults(results){
     const toggle = () => {
       checkbox.checked = !checkbox.checked;
       if(checkbox.checked) selectedIndexes.add(i); else selectedIndexes.delete(i);
+      item.classList.toggle('selected', checkbox.checked);
       els.searchUse.disabled = selectedIndexes.size === 0;
     };
     item.addEventListener('click', (e) => { if(e.target !== checkbox) toggle(); });
     checkbox.addEventListener('click', (e) => {
       e.stopPropagation();
+      item.classList.toggle('selected', checkbox.checked);
       if(checkbox.checked) selectedIndexes.add(i); else selectedIndexes.delete(i);
       els.searchUse.disabled = selectedIndexes.size === 0;
     });
@@ -1160,6 +1262,22 @@ function renderResults(results){
 }
 els.searchGoBtn.addEventListener('click', runSearch);
 els.searchQueryInput.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); runSearch(); } });
+els.searchSelectAll.addEventListener('click', () => {
+  selectedIndexes = new Set(currentResults.map((_, i) => i));
+  els.searchResults.querySelectorAll('.searchResultItem').forEach((item) => {
+    const cb = item.querySelector('input');
+    if(cb){ cb.checked = true; item.classList.add('selected'); }
+  });
+  els.searchUse.disabled = selectedIndexes.size === 0;
+});
+els.searchClearAll.addEventListener('click', () => {
+  selectedIndexes.clear();
+  els.searchResults.querySelectorAll('.searchResultItem').forEach((item) => {
+    const cb = item.querySelector('input');
+    if(cb){ cb.checked = false; item.classList.remove('selected'); }
+  });
+  els.searchUse.disabled = true;
+});
 els.searchUse.addEventListener('click', () => {
   const chosen = [...selectedIndexes].sort((a,b) => a-b).map(i => currentResults[i]);
   pendingSearchContext = {
@@ -1190,6 +1308,22 @@ els.file.addEventListener('change', () => {
 els.removeImg.addEventListener('click', () => { pendingImage = null; els.preview.style.display = 'none'; els.file.value = ''; });
 els.autoSearchToggle.addEventListener('change', () => localStorage.setItem('kasane_autosearch', els.autoSearchToggle.checked ? '1' : '0'));
 els.autoMemoryToggle.addEventListener('change', () => setAutoMemoryEnabled(els.autoMemoryToggle.checked));
+
+// ================= Mobile / teclado =================
+function syncViewportHeight(){
+  const vv = window.visualViewport;
+  if(!vv) return;
+  document.documentElement.style.setProperty('--vvh', vv.height + 'px');
+  // Keep the input above the on-screen keyboard on browsers that expose visualViewport.
+  const keyboard = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+  document.documentElement.style.setProperty('--keyboard-height', keyboard + 'px');
+}
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize', syncViewportHeight);
+  window.visualViewport.addEventListener('scroll', syncViewportHeight);
+}
+window.addEventListener('resize', syncViewportHeight);
+syncViewportHeight();
 
 // ================= Inicialização =================
 (async function init(){

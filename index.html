@@ -1082,7 +1082,7 @@ async function continueResponse(messageIndex){
       body:JSON.stringify({
         system_instruction:{parts:[{text:systemText}]},
         contents,
-        generationConfig:{temperature:0.7, maxOutputTokens:900}
+        generationConfig:{temperature:0.7, maxOutputTokens:2048}
       })
     });
     const data = await res.json();
@@ -1376,6 +1376,45 @@ async function sendMessage(){
     })
   }));
 
+  const extractGeminiText = (data) => (data?.candidates?.[0]?.content?.parts || [])
+    .filter(p => typeof p.text === 'string')
+    .map(p => p.text)
+    .join('\n')
+    .trim();
+
+  const cleanReply = (text) => {
+    let out = String(text || '').trim();
+    // Remove alguns artefatos que podem aparecer quando uma geração é interrompida.
+    out = out.replace(/\bIt got cut off or it was a simulated turn\.?/gi, '').trim();
+    out = out.replace(/\b(simulated turn|generation was cut off)\b/gi, '').trim();
+    return out;
+  };
+
+  const requestContinuation = async (baseContents, currentReply, attempt = 0) => {
+    if(attempt >= 2) return currentReply;
+    const continuationContents = [...baseContents,
+      { role:'model', parts:[{ text: currentReply }] },
+      { role:'user', parts:[{ text:'A resposta anterior foi interrompida. Continue exatamente de onde parou, sem repetir o que já foi escrito. Não mencione limites, tokens, simulações ou mensagens internas. Termine a explicação de forma natural.' }] }
+    ];
+
+    const res = await fetch(API_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        system_instruction:{parts:[{text:systemText}]},
+        contents:continuationContents,
+        generationConfig:{temperature:0.7, maxOutputTokens:2048}
+      })
+    });
+    const data = await res.json();
+    if(!res.ok) throw Object.assign(new Error('Gemini continuation error'), { response:data, status:res.status });
+    const next = cleanReply(extractGeminiText(data));
+    if(!next) return currentReply;
+    const combined = `${currentReply}\n${next}`.trim();
+    if(data?.candidates?.[0]?.finishReason === 'MAX_TOKENS') return requestContinuation(baseContents, combined, attempt + 1);
+    return combined;
+  };
+
   const doSend = async () => {
     try{
       const res = await fetch(API_URL, {
@@ -1384,7 +1423,7 @@ async function sendMessage(){
         body: JSON.stringify({
           system_instruction: { parts: [{ text: systemText }] },
           contents,
-          generationConfig: { temperature: 0.7, maxOutputTokens: 900 },
+          generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
         }),
       });
       const data = await res.json();
@@ -1398,17 +1437,32 @@ async function sendMessage(){
         return;
       }
 
-      const reply = data?.candidates?.[0]?.content?.parts?.filter(p => typeof p.text === 'string').map(p => p.text).join('\n')
-        || 'Não recebi uma resposta válida da Kasane.';
+      let reply = cleanReply(extractGeminiText(data));
+      if(!reply){
+        addErrorBubble('Não recebi uma resposta válida da Kasane.', doSend);
+        chat.messages.pop();
+        await saveCurrentChat();
+        renderCurrentChat();
+        return;
+      }
 
-      const aiMsg = { role:'model', parts:[{ text: reply }], finishReason: data?.candidates?.[0]?.finishReason || null };
+      // Se o Gemini realmente bateu no limite de saída, continua automaticamente.
+      if(data?.candidates?.[0]?.finishReason === 'MAX_TOKENS'){
+        try{
+          reply = await requestContinuation(contents, reply);
+        }catch(err){
+          console.warn('Não foi possível completar automaticamente a resposta:', err);
+        }
+      }
+
+      const aiMsg = { role:'model', parts:[{ text: reply }], finishReason: null };
       chat.messages.push(aiMsg);
       renderStoredMessage(aiMsg);
       await saveCurrentChat();
       maybeSummarize(chat);
     }catch(err){
       removeTyping();
-      addErrorBubble(friendlyError(0, null), doSend);
+      addErrorBubble(friendlyError(err?.status || 0, err?.response || null), doSend);
     }finally{
       els.send.disabled = false;
     }

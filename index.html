@@ -523,15 +523,17 @@
   }
 
 
-/* ===== Extras: memória, relógio/clima e minijogos ===== */
-#extrasBar{display:flex;gap:6px;padding:0 20px 8px;flex-shrink:0;}
-.extraBtn{background:var(--panel);border:1px solid var(--border);color:var(--muted);border-radius:9px;padding:7px 10px;font-size:12px;cursor:pointer}.extraBtn:hover{color:var(--text);border-color:var(--denim)}
-#infoWidget{position:fixed;right:18px;top:62px;z-index:30;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:9px 12px;min-width:170px;box-shadow:0 10px 30px rgba(0,0,0,.25);backdrop-filter:blur(10px)}
-#clockText{font-size:20px;font-weight:700}.weatherLine{font-size:11px;color:var(--muted);margin-top:2px}.weatherLine strong{color:var(--text)}
-#gameOverlay .modal{width:min(620px,94vw)}
-.gameTabs{display:flex;gap:7px;margin-bottom:10px}.gameTab{flex:1;padding:8px;border-radius:9px;border:1px solid var(--border);background:var(--bg-soft);color:var(--muted);cursor:pointer}.gameTab.active{border-color:var(--hair);color:var(--text);background:var(--panel-2)}
-.gamePanel{display:none}.gamePanel.active{display:block}.gameBoard{display:grid;grid-template-columns:repeat(3,72px);gap:7px;justify-content:center;margin:16px auto}.tttCell{width:72px;height:72px;border:1px solid var(--border);border-radius:10px;background:var(--bg-soft);color:var(--text);font-size:30px;font-weight:700;cursor:pointer}.gameStatus{text-align:center;color:var(--muted);font-size:13px;min-height:20px}.gameActions{display:flex;justify-content:center;gap:8px;margin-top:10px}.petCard{background:var(--bg-soft);border:1px solid var(--border);border-radius:14px;padding:16px;text-align:center}.petFace{font-size:64px}.petName{font-weight:700;margin:4px}.petStats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.petStat{background:var(--panel);border:1px solid var(--border);border-radius:9px;padding:8px;font-size:11px;color:var(--muted)}.petStat strong{display:block;color:var(--text);font-size:15px}.petActions{display:flex;justify-content:center;gap:7px;flex-wrap:wrap;margin-top:12px}.petActions button{padding:8px 11px;border-radius:9px;border:1px solid var(--border);background:var(--panel);color:var(--text);cursor:pointer}.activityBox{text-align:center;background:var(--bg-soft);border:1px solid var(--border);border-radius:14px;padding:24px}.activityText{font-size:16px;line-height:1.5;color:var(--text);min-height:50px}.activityBox button{margin-top:14px;padding:9px 14px;border:0;border-radius:9px;background:var(--hair);color:#fff;font-weight:600;cursor:pointer}
-@media(max-width:760px){#extrasBar{padding:0 10px 6px;overflow-x:auto}.extraBtn{white-space:nowrap}#infoWidget{right:8px;top:55px;min-width:145px}.gameBoard{grid-template-columns:repeat(3,64px)}.tttCell{width:64px;height:64px}}
+/* Conta Google + barra de emoção */
+#accountBar{display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--border);border-radius:12px;background:var(--bg-soft);margin:8px 0 10px;font-size:12px}
+#googleSignBtn{border:1px solid var(--border);background:var(--panel);color:var(--text);border-radius:9px;padding:7px 10px;cursor:pointer;font-weight:600}
+#accountStatus{flex:1;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#emotionPanel{margin:8px 0 4px;padding:9px 10px;border:1px solid var(--border);border-radius:12px;background:var(--bg-soft);cursor:pointer}
+#emotionTop{display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:6px}
+#emotionName{font-weight:700}
+.emotion-low{color:#ef8b8b}.emotion-mid{color:#f2c76e}.emotion-high{color:#8fd3a8}
+#emotionTrack{height:8px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden}
+#emotionFill{height:100%;width:100%;border-radius:99px;transition:width .35s ease,filter .35s ease}
+#emotionHint{font-size:10px;color:var(--muted);margin-top:5px}
 </style>
 </head>
 <body>
@@ -544,6 +546,8 @@
     <div id="sidebarFoot">
       <button class="sideBtn" id="memBtnSide">🎓 Memória</button>
       <button class="sideBtn" id="searchBtnSide">🔍 Pesquisar</button>
+      <div id="accountBar"><button id="googleSignBtn">🔐 Entrar com Google</button><span id="accountStatus">Não conectado — salvamento permanente desativado</span></div>
+      <div id="emotionPanel" title="Ver estado emocional"><div id="emotionTop"><span>💗 Emoção da Kasane</span><span id="emotionName">😊 Feliz</span></div><div id="emotionTrack"><div id="emotionFill"></div></div><div id="emotionHint">100/100 · de bom humor</div></div>
     </div>
   </aside>
 
@@ -579,11 +583,7 @@
 
       <div id="searchAttachChip"><span id="searchAttachText"></span><button id="searchAttachRemove">×</button></div>
 
-      
-<div id="infoWidget"><div id="clockText">--:--</div><div class="weatherLine" id="dateText">Carregando data...</div><div class="weatherLine" id="weatherText">☁️ Clima: carregando...</div></div>
-<div id="gameOverlay" class="overlay"><div class="modal"><h2>🎮 Minijogos</h2><p class="hint">Escolha uma atividade para brincar um pouco com a Kasane.</p><div class="gameTabs"><button class="gameTab active" data-game="ttt">⭕ Jogo da velha</button><button class="gameTab" data-game="pet">🐾 Bichinho</button><button class="gameTab" data-game="activity">🎲 Atividade</button></div><div id="gameTtt" class="gamePanel active"><div class="gameBoard" id="tttBoard"></div><div class="gameStatus" id="tttStatus"></div><div class="gameActions"><button class="btnGhost" id="tttReset">Recomeçar</button></div></div><div id="gamePet" class="gamePanel"><div class="petCard"><div class="petFace" id="petFace">🐱</div><div class="petName">Mimi</div><div class="petStats"><div class="petStat">🍖 Fome<strong id="petHunger">70</strong></div><div class="petStat">💖 Humor<strong id="petMood">70</strong></div><div class="petStat">⚡ Energia<strong id="petEnergy">70</strong></div></div><div class="petActions"><button id="petFeed">🍖 Alimentar</button><button id="petPlay">🎾 Brincar</button><button id="petSleep">💤 Dormir</button></div></div></div><div id="gameActivity" class="gamePanel"><div class="activityBox"><div class="activityText" id="activityText">Clique no botão para receber uma atividade.</div><button id="activityBtn">🎲 Sortear atividade</button></div></div><div class="modalActions"><button class="btnGhost" id="gameClose">Fechar</button></div></div></div>
-<div id="extrasBar"><button class="extraBtn" id="gameBtn">🎮 Minijogos</button></div>
-<div id="inputBar">
+      <div id="inputBar">
         <div id="preview"><img id="previewImg"><button id="removeImg">×</button></div>
         <input type="file" id="fileInput" accept="image/*">
         <div class="iconbtn" id="attachBtn" title="Anexar imagem">📎</div>
@@ -664,6 +664,16 @@
 
 </div>
 
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+const firebaseConfig={apiKey:"COLOQUE_SUA_CONFIG_FIREBASE_AQUI",authDomain:"COLOQUE_SEU_PROJETO.firebaseapp.com",projectId:"COLOQUE_SEU_PROJECT_ID",storageBucket:"COLOQUE_SEU_PROJECT_ID.firebasestorage.app",messagingSenderId:"COLOQUE_SEU_SENDER_ID",appId:"COLOQUE_SEU_APP_ID"};
+window.kasaneCloud={enabled:false,user:null,signIn:async()=>null,signOut:async()=>{},save:async()=>false,load:async()=>null};
+const configured=!Object.values(firebaseConfig).some(v=>String(v).includes('COLOQUE_'));
+if(configured){try{const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app),provider=new GoogleAuthProvider();window.kasaneCloud.enabled=true;window.kasaneCloud.signIn=()=>signInWithPopup(auth,provider);window.kasaneCloud.signOut=()=>signOut(auth);window.kasaneCloud.save=async state=>{if(!auth.currentUser)return false;await setDoc(doc(db,'users',auth.currentUser.uid,'kasane','state'),state,{merge:true});return true};window.kasaneCloud.load=async()=>{if(!auth.currentUser)return null;const snap=await getDoc(doc(db,'users',auth.currentUser.uid,'kasane','state'));return snap.exists()?snap.data():null};onAuthStateChanged(auth,user=>{window.kasaneCloud.user=user||null;window.dispatchEvent(new CustomEvent('kasane-auth',{detail:{user}}));});}catch(e){console.warn('Firebase não inicializado',e)}}
+</script>
 <script>
 const AVATAR = {
   neutral: "assets/avatar/neutral.png",
@@ -745,6 +755,8 @@ const els = {
   renameInput: document.getElementById('renameInput'),
   renameCancel: document.getElementById('renameCancel'),
   renameSave: document.getElementById('renameSave'),
+  googleSignBtn: document.getElementById('googleSignBtn'), accountStatus: document.getElementById('accountStatus'),
+  emotionFill: document.getElementById('emotionFill'), emotionName: document.getElementById('emotionName'), emotionHint: document.getElementById('emotionHint'),
 };
 
 let pendingImage = null;
@@ -758,6 +770,17 @@ let currentResults = [];
 let selectedIndexes = new Set();
 let renamingChatId = null;
 let pendingEditIndex = null;
+
+// ================= Emoção =================
+let kasaneEmotion=Number(localStorage.getItem('kasane_emotion')||100);
+let emotionLastText='';let emotionRepeat=0;
+function emotionInfo(){if(kasaneEmotion>=75)return {label:'😊 Feliz',expr:'happy'};if(kasaneEmotion>=45)return {label:'🙂 Tranquila',expr:'neutral'};if(kasaneEmotion>=20)return {label:'😐 Séria',expr:'serious'};return {label:'😠 Brava',expr:'angry'}}
+function updateEmotionUI(){kasaneEmotion=Math.max(0,Math.min(100,Math.round(kasaneEmotion)));localStorage.setItem('kasane_emotion',kasaneEmotion);const i=emotionInfo();if(els.emotionFill)els.emotionFill.style.width=kasaneEmotion+'%';if(els.emotionName){els.emotionName.textContent=i.label;els.emotionName.className=kasaneEmotion<45?'emotion-low':kasaneEmotion<75?'emotion-mid':'emotion-high'}if(els.emotionHint)els.emotionHint.textContent=`${kasaneEmotion}/100 · ${kasaneEmotion<20?'muito irritada — respostas bem curtas':kasaneEmotion<45?'irritada — respostas mais diretas':kasaneEmotion<75?'normal':'de bom humor'}`}
+function setEmotion(v){kasaneEmotion=Math.max(0,Math.min(100,v));updateEmotionUI();saveCloudState()}
+function changeEmotion(d){setEmotion(kasaneEmotion+d)}
+function analyzeEmotion(text){const t=normalizeMemoryText(text);if(!t)return;if(t===normalizeMemoryText(emotionLastText))emotionRepeat++;else emotionRepeat=0;emotionLastText=text;if(/\b(odeio voce|odeio a kasane|kasane e inutil|voce e inutil|voce e burra|sua burra|cala a boca|te odeio)\b/.test(t)){changeEmotion(-15);return}if(/\b(quebrar|burlar|explorar|hackear|forcar o sistema)\b/.test(t)){changeEmotion(-10);return}if(emotionRepeat>=2){changeEmotion(-5);return}if(/\b(obrigado|obrigada|valeu|parabens|muito bom|perfeito|amei|legal|incrivel|conseguimos|funcionou)\b/.test(t)){changeEmotion(5);return}if(kasaneEmotion<100)setEmotion(kasaneEmotion+1)}
+function emotionPrompt(){if(kasaneEmotion<20)return '\n\nESTADO EMOCIONAL: você está muito irritada. Responda bem curto, sério e direto, mas continue respeitosa e útil. Não tente fazer o usuário sentir culpa.';if(kasaneEmotion<45)return '\n\nESTADO EMOCIONAL: você está irritada. Responda de forma mais curta e séria, sem deixar de ajudar.';if(kasaneEmotion>=75)return '\n\nESTADO EMOCIONAL: você está de bom humor. Pode ser mais calorosa e animada.';return ''}
+updateEmotionUI();
 
 // ================= IndexedDB =================
 let dbPromise = null;
@@ -813,6 +836,13 @@ async function idbClear(store){
 }
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
 
+// ================= Conta Google / sincronização =================
+function cloudState(){return {version:1,chats,memories,emotion:kasaneEmotion,savedAt:Date.now()}}
+let cloudTimer=null;function saveCloudState(){if(!window.kasaneCloud?.enabled||!window.kasaneCloud?.user)return;clearTimeout(cloudTimer);cloudTimer=setTimeout(()=>window.kasaneCloud.save(cloudState()).catch(e=>console.warn('Falha no salvamento Google',e)),400)}
+async function loadCloudState(){if(!window.kasaneCloud?.enabled||!window.kasaneCloud?.user)return;try{const st=await window.kasaneCloud.load();if(!st)return;if(Array.isArray(st.chats)){chats=st.chats;for(const c of chats)await idbPut('chats',c)}if(Array.isArray(st.memories)){memories=st.memories;for(const m of memories)await idbPut('memories',m)}if(typeof st.emotion==='number')setEmotion(st.emotion);chats.sort((a,b)=>b.updatedAt-a.updatedAt);memories.sort((a,b)=>b.createdAt-a.createdAt);if(chats.length)currentChatId=chats[0].id;renderChatList();renderCurrentChat();renderMemList()}catch(e){console.warn('Falha ao carregar conta Google',e)}}
+async function refreshAccount(){const u=window.kasaneCloud?.user;if(!window.kasaneCloud?.enabled){els.accountStatus.textContent='Configure o Firebase para ativar o Google';return}if(u){els.accountStatus.textContent='Salvo na conta: '+(u.email||'Google');els.googleSignBtn.textContent='🚪 Sair';await loadCloudState()}else{els.accountStatus.textContent='Não conectado — salvamento permanente desativado';els.googleSignBtn.textContent='🔐 Entrar com Google'}}
+els.googleSignBtn?.addEventListener('click',async()=>{try{if(!window.kasaneCloud.enabled){alert('O login Google precisa da configuração do Firebase. Veja README-GMAIL.txt.');return}if(window.kasaneCloud.user)await window.kasaneCloud.signOut();else await window.kasaneCloud.signIn()}catch(e){alert('Não foi possível entrar com Google. Tente novamente.')}});window.addEventListener('kasane-auth',refreshAccount);setTimeout(refreshAccount,700);
+
 // ================= Chats =================
 async function loadChats(){
   chats = await idbGetAll('chats');
@@ -840,6 +870,7 @@ async function saveCurrentChat(){
   if(!chat) return;
   chat.updatedAt = Date.now();
   await idbPut('chats', chat);
+  saveCloudState();
   chats.sort((a,b) => b.updatedAt - a.updatedAt);
   renderChatList();
 }
@@ -993,6 +1024,7 @@ async function addMemory(text, category){
   const mem = { id: uid(), text: clean, category: category || 'outras', createdAt: Date.now() };
   memories.unshift(mem);
   await idbPut('memories', mem);
+  saveCloudState();
   renderMemList();
   return mem;
 }
@@ -1419,6 +1451,7 @@ function setAutoMemoryEnabled(enabled){
 function systemPromptText(relevantMems){
   const name = els.nameInput.value.trim() || 'Kasane';
   let prompt = `Você se chama ${name}, uma assistente de IA amigável, natural e direta, que sempre responde em português do Brasil. Se não souber ou não tiver certeza de algo, diga isso claramente — nunca invente uma resposta. Nunca diga que lembra de algo que não está nas memórias fornecidas abaixo.`;
+  prompt += emotionPrompt();
   if(relevantMems.length){
     prompt += `\n\nMemórias relevantes sobre o usuário (use somente se fizerem sentido para a pergunta atual):\n` +
       relevantMems.map(m => `- ${m.text}`).join('\n');
@@ -1429,6 +1462,7 @@ function systemPromptText(relevantMems){
 async function sendMessage(){
   const text = els.text.value.trim();
   if(!text && !pendingImage) return;
+  if(text) analyzeEmotion(text);
   const chat = getCurrentChat();
   if(!chat) return;
 
@@ -1587,7 +1621,7 @@ async function sendMessage(){
       const aiMsg = { role:'model', parts:[{ text: reply }], finishReason: null };
       chat.messages.push(aiMsg);
       renderStoredMessage(aiMsg);
-      setExpression(expressionForText(text, reply));
+      setExpression(emotionInfo().expr || expressionForText(text, reply));
       animateTalking(Math.min(1800, Math.max(650, reply.length * 7)));
       await saveCurrentChat();
       maybeSummarize(chat);
@@ -1768,7 +1802,7 @@ function closeThemeModal(){ els.themeOverlay.classList.remove('open'); }
 if(els.themeBtn) els.themeBtn.addEventListener('click',openThemeModal);
 if(els.themeClose) els.themeClose.addEventListener('click',closeThemeModal);
 if(els.themeOverlay) els.themeOverlay.addEventListener('click',(e)=>{ if(e.target===els.themeOverlay) closeThemeModal(); });
-document.querySelectorAll('.themeOption').forEach(btn=>btn.addEventListener('click',()=>{ localStorage.setItem('kasane_theme_manual','1'); applyTheme(btn.dataset.themeChoice); }));
+document.querySelectorAll('.themeOption').forEach(btn=>btn.addEventListener('click',()=>applyTheme(btn.dataset.themeChoice)));
 applyTheme(localStorage.getItem('kasane_theme')||'neon');
 
 // ================= Inicialização =================
@@ -1794,36 +1828,6 @@ if (window.kasaneDesktop) {
   }
 }
 
-
-// ===== Relógio + clima =====
-(function initClockWeather(){
-  const clock=document.getElementById('clockText'), date=document.getElementById('dateText'), weather=document.getElementById('weatherText');
-  function tick(){const now=new Date(); clock.textContent=now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); date.textContent=now.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'}); const h=now.getHours(); let theme='neon'; if(h>=6&&h<17) theme='light'; else if(h>=17&&h<20) theme='neon'; else theme='synthwave'; if(localStorage.getItem('kasane_theme_manual') !== '1') applyTheme(theme);}
-  tick(); setInterval(tick,1000);
-  async function loadWeather(){
-    const city=localStorage.getItem('kasane_weather_city')||'Cuiaba';
-    try{
-      const g=await fetch('https://geocoding-api.open-meteo.com/v1/search?name='+encodeURIComponent(city)+'&count=1&language=pt&format=json'); const gd=await g.json(); const place=gd.results?.[0]; if(!place) throw new Error();
-      const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude='+place.latitude+'&longitude='+place.longitude+'&current=temperature_2m,weather_code&timezone=auto'); const d=await r.json();
-      const map={0:'☀️ Céu limpo',1:'🌤️ Poucas nuvens',2:'⛅ Parcialmente nublado',3:'☁️ Nublado',45:'🌫️ Neblina',48:'🌫️ Neblina',51:'🌦️ Garoa',53:'🌦️ Garoa',55:'🌧️ Garoa',61:'🌧️ Chuva',63:'🌧️ Chuva',65:'🌧️ Chuva forte',71:'❄️ Neve',73:'❄️ Neve',75:'❄️ Neve forte',80:'🌦️ Pancadas',81:'🌦️ Pancadas',82:'⛈️ Pancadas fortes',95:'⛈️ Tempestade',96:'⛈️ Tempestade',99:'⛈️ Tempestade'}; weather.innerHTML=(map[d.current.weather_code]||'🌡️ Clima')+' · <strong>'+Math.round(d.current.temperature_2m)+'°C</strong> · '+place.name;
-    }catch(e){weather.textContent='☁️ Clima indisponível';}
-  } loadWeather();
-})();
-
-// ===== Minijogos =====
-(function initGames(){
- const overlay=document.getElementById('gameOverlay'); if(!overlay)return; const close=()=>overlay.classList.remove('open'); document.getElementById('gameBtn').onclick=()=>{overlay.classList.add('open'); resetTTT();}; document.getElementById('gameClose').onclick=close; overlay.onclick=e=>{if(e.target===overlay)close();};
- document.querySelectorAll('.gameTab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.gameTab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.gamePanel').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById('game'+b.dataset.game[0].toUpperCase()+b.dataset.game.slice(1)).classList.add('active');});
- let board=Array(9).fill(''), over=false; const cells=document.getElementById('tttBoard'), status=document.getElementById('tttStatus');
- function win(b){const w=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]]; return w.find(x=>b[x[0]]&&b[x[0]]===b[x[1]]&&b[x[1]]===b[x[2]]);}
- function resetTTT(){board=Array(9).fill('');over=false;renderTTT();status.textContent='Você é X. Faça sua jogada!';}
- function renderTTT(){cells.innerHTML='';board.forEach((v,i)=>{const b=document.createElement('button');b.className='tttCell';b.textContent=v;b.onclick=()=>move(i);cells.appendChild(b);});}
- function move(i){if(over||board[i])return; board[i]='X';renderTTT();let w=win(board);if(w){over=true;status.textContent='🎉 Você venceu!';return}if(board.every(Boolean)){over=true;status.textContent='🤝 Empate!';return} status.textContent='Kasane está jogando...';setTimeout(()=>{const free=board.map((v,j)=>v?null:j).filter(v=>v!==null);if(!free.length)return; let pick=free[Math.floor(Math.random()*free.length)]; const wins=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]]; for(const line of wins){const vals=line.map(j=>board[j]);if(vals.filter(x=>x==='O').length===2&&vals.includes('')){pick=line[vals.indexOf('')];break}} if(board[pick])pick=free[0];board[pick]='O';renderTTT();w=win(board);if(w){over=true;status.textContent='😄 A Kasane venceu!'}else if(board.every(Boolean)){over=true;status.textContent='🤝 Empate!'}else status.textContent='Sua vez!';},350);}
- document.getElementById('tttReset').onclick=resetTTT;
- let hunger=70,mood=70,energy=70; function petRender(){document.getElementById('petHunger').textContent=hunger;document.getElementById('petMood').textContent=mood;document.getElementById('petEnergy').textContent=energy;document.getElementById('petFace').textContent=energy<20?'😴':hunger<20?'🥺':mood>80?'😸':'🐱';} function clamp(v){return Math.max(0,Math.min(100,v));}
- document.getElementById('petFeed').onclick=()=>{hunger=clamp(hunger+25);energy=clamp(energy-5);mood=clamp(mood+3);petRender();}; document.getElementById('petPlay').onclick=()=>{hunger=clamp(hunger-8);energy=clamp(energy-15);mood=clamp(mood+18);petRender();}; document.getElementById('petSleep').onclick=()=>{energy=clamp(energy+30);hunger=clamp(hunger-8);petRender();}; setInterval(()=>{hunger=clamp(hunger-1);energy=clamp(energy-1);petRender();},15000); petRender();
- const activities=['Crie uma ideia nova para seu jogo no Roblox.','Faça um desenho rápido da Kasane.','Aprenda uma função nova de Luau.','Pesquise uma curiosidade que você sempre quis saber.','Organize uma parte do seu projeto.','Jogue uma partida rápida de algum jogo que você gosta.','Invente um nome para um personagem.','Tente resolver um pequeno desafio de programação.']; document.getElementById('activityBtn').onclick=()=>{document.getElementById('activityText').textContent=activities[Math.floor(Math.random()*activities.length)];};
-})();
 </script>
 </body>
 </html>

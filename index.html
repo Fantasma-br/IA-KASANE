@@ -21,6 +21,46 @@
     --border: #2c2f40;
     --warn: #e0a83a;
   }
+
+  /* ---------- Temas ---------- */
+  body[data-theme="dark"]{
+    --bg:#0b0d12; --bg-soft:#11141b; --panel:#171a22; --panel-2:#1d212c;
+    --hair:#8b5cf6; --hair-dim:#4c2f86; --denim:#64748b; --denim-dim:#263243;
+    --text:#f5f5f5; --muted:#9ca3af; --bubble-user:#293241; --bubble-ai:#1c2029;
+    --border:#292e3a; --warn:#f59e0b;
+  }
+  body[data-theme="neon"]{
+    --bg:#120c14; --bg-soft:#1b101b; --panel:#241322; --panel-2:#2d1829;
+    --hair:#ff3f6c; --hair-dim:#8f2440; --denim:#ff7aa0; --denim-dim:#54283a;
+    --text:#fff4f7; --muted:#c49baa; --bubble-user:#4d2135; --bubble-ai:#2b1727;
+    --border:#4a263b; --warn:#ffc857;
+  }
+  body[data-theme="synthwave"]{
+    --bg:#10051c; --bg-soft:#18092a; --panel:#21113a; --panel-2:#2b1648;
+    --hair:#ff2bd6; --hair-dim:#8c1b77; --denim:#36e0ff; --denim-dim:#15576b;
+    --text:#fff2ff; --muted:#bda8d4; --bubble-user:#30205b; --bubble-ai:#24133d;
+    --border:#4b2870; --warn:#ffd166;
+  }
+  body[data-theme="light"]{
+    --bg:#f5f6fa; --bg-soft:#e9ebf2; --panel:#ffffff; --panel-2:#eef0f7;
+    --hair:#e2405a; --hair-dim:#b82e45; --denim:#39718c; --denim-dim:#d8e6ec;
+    --text:#202330; --muted:#687086; --bubble-user:#dcecf5; --bubble-ai:#ffffff;
+    --border:#d5d9e4; --warn:#b7791f;
+  }
+  body[data-theme="synthwave"] #glow{ background:radial-gradient(circle, var(--hair) 0%, var(--denim) 30%, transparent 70%); opacity:.3; }
+  body[data-theme="light"] #glow{ opacity:.12; }
+
+  /* Seletor de tema */
+  #themeOverlay .modal{height:auto;max-height:min(520px,84vh);}
+  .themeGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
+  .themeOption{border:1px solid var(--border);background:var(--panel);color:var(--text);border-radius:12px;padding:12px;text-align:left;cursor:pointer;transition:.15s;}
+  .themeOption:hover{transform:translateY(-1px);border-color:var(--hair);}
+  .themeOption.active{border-color:var(--hair);box-shadow:0 0 0 2px color-mix(in srgb,var(--hair) 20%,transparent);}
+  .themePreview{height:38px;border-radius:8px;margin-bottom:8px;border:1px solid rgba(255,255,255,.08);}
+  .themeOption strong{display:block;font-size:13px;margin-bottom:3px;}
+  .themeOption span{font-size:11px;color:var(--muted);}
+  @media(max-width:420px){.themeGrid{grid-template-columns:1fr;}}
+
   *{box-sizing:border-box;}
   html,body{
     margin:0; padding:0; height:100%;
@@ -512,6 +552,7 @@
             <input type="checkbox" id="autoSearchToggle" style="cursor:pointer;">
             Auto-pesquisa
           </label>
+          <button class="hdrBtn" id="themeBtn" title="Escolher tema">🎨 Tema</button>
           <label class="hdrBtn" style="display:flex;align-items:center;gap:5px;cursor:pointer;">
             <input type="checkbox" id="autoMemoryToggle" style="cursor:pointer;">
             Auto-memória
@@ -536,6 +577,21 @@
         <button id="sendBtn" title="Enviar">➤</button>
       </div>
 
+    </div>
+  </div>
+
+  <!-- ---------- Modal: Temas ---------- -->
+  <div class="overlay" id="themeOverlay">
+    <div class="modal">
+      <h2>🎨 Tema da Kasane</h2>
+      <p class="hint">Escolha o visual da Kasane. A escolha fica salva neste navegador.</p>
+      <div class="themeGrid">
+        <button class="themeOption" data-theme-choice="neon"><div class="themePreview" style="background:linear-gradient(135deg,#120c14,#ff3f6c,#2d1829)"></div><strong>🌸 Neon Kasane</strong><span>Vermelho e rosa, estilo principal.</span></button>
+        <button class="themeOption" data-theme-choice="dark"><div class="themePreview" style="background:linear-gradient(135deg,#0b0d12,#171a22,#8b5cf6)"></div><strong>🌑 Escuro</strong><span>Mais discreto e confortável.</span></button>
+        <button class="themeOption" data-theme-choice="synthwave"><div class="themePreview" style="background:linear-gradient(135deg,#10051c,#ff2bd6,#36e0ff)"></div><strong>💜 Synthwave</strong><span>Neon roxo, rosa e ciano.</span></button>
+        <button class="themeOption" data-theme-choice="light"><div class="themePreview" style="background:linear-gradient(135deg,#f5f6fa,#ffffff,#e2405a)"></div><strong>☀️ Claro</strong><span>Interface clara para ambientes iluminados.</span></button>
+      </div>
+      <div class="modalActions"><button class="btnPrimary" id="themeClose">Fechar</button></div>
     </div>
   </div>
 
@@ -623,6 +679,7 @@ const MEM_CATEGORIES = [
 ];
 
 const els = {
+    themeBtn: document.getElementById('themeBtn'), themeOverlay: document.getElementById('themeOverlay'), themeClose: document.getElementById('themeClose'),
   sidebar: document.getElementById('sidebar'),
   sidebarOverlay: document.getElementById('sidebarOverlay'),
   hamburger: document.getElementById('hamburger'),
@@ -1683,6 +1740,22 @@ if(window.visualViewport){
 }
 window.addEventListener('resize', syncViewportHeight);
 syncViewportHeight();
+
+// ================= Temas =================
+function applyTheme(theme){
+  const allowed=['neon','dark','synthwave','light'];
+  if(!allowed.includes(theme)) theme='neon';
+  document.body.dataset.theme=theme;
+  localStorage.setItem('kasane_theme',theme);
+  document.querySelectorAll('.themeOption').forEach(btn=>btn.classList.toggle('active',btn.dataset.themeChoice===theme));
+}
+function openThemeModal(){ applyTheme(localStorage.getItem('kasane_theme')||'neon'); els.themeOverlay.classList.add('open'); }
+function closeThemeModal(){ els.themeOverlay.classList.remove('open'); }
+if(els.themeBtn) els.themeBtn.addEventListener('click',openThemeModal);
+if(els.themeClose) els.themeClose.addEventListener('click',closeThemeModal);
+if(els.themeOverlay) els.themeOverlay.addEventListener('click',(e)=>{ if(e.target===els.themeOverlay) closeThemeModal(); });
+document.querySelectorAll('.themeOption').forEach(btn=>btn.addEventListener('click',()=>applyTheme(btn.dataset.themeChoice)));
+applyTheme(localStorage.getItem('kasane_theme')||'neon');
 
 // ================= Inicialização =================
 (async function init(){

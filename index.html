@@ -222,6 +222,9 @@
   #sendBtn{ flex-shrink:0; width:42px; height:42px; border-radius:50%; background: var(--hair); border:none; color:#fff; font-size:17px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
   #sendBtn:disabled{ opacity:.4; cursor:default; }
   #fileInput{ display:none; }
+  #imageGenBtn{ font-size:17px; }
+  .msg img.generatedImage{ max-width:min(520px,100%); border-radius:12px; display:block; margin-top:6px; }
+  .imageGenBusy{ opacity:.6; pointer-events:none; }
   #searchAttachChip{ display:none; align-items:center; gap:6px; background: var(--panel); border: 1px solid var(--border); border-radius: 20px; padding: 6px 12px; font-size:12px; color: var(--muted); margin: 0 20px 8px; width: fit-content; }
   #searchAttachChip button{ background:none; border:none; color:#ef4444; cursor:pointer; font-size:13px; padding:0; }
   #autoSearchChip{ display:flex; align-items:center; gap:6px; margin: 0 20px 8px; font-size:11.5px; color:var(--muted); }
@@ -587,6 +590,7 @@
         <div id="preview"><img id="previewImg"><button id="removeImg">×</button></div>
         <input type="file" id="fileInput" accept="image/*">
         <div class="iconbtn" id="attachBtn" title="Anexar imagem">📎</div>
+        <button class="iconbtn" id="imageGenBtn" title="Criar imagem">🎨</button>
         <textarea id="textInput" rows="1" placeholder="Digite uma mensagem..."></textarea>
         <button id="sendBtn" title="Enviar">➤</button>
       </div>
@@ -689,6 +693,7 @@ const API_BASE = (window.kasaneDesktop && window.kasaneDesktop.apiBase) ? window
 const API_URL = API_BASE + "/api/chat";
 const STATUS_URL = API_BASE + "/api/status";
 const SEARCH_API_URL = API_BASE + "/api/search";
+const IMAGE_API_URL = API_BASE + "/api/image";
 
 const RECENT_KEEP = 10;          // mensagens recentes enviadas por completo
 const SUMMARY_TRIGGER_EVERY = 8; // gera/atualiza resumo a cada N mensagens novas além do RECENT_KEEP
@@ -717,6 +722,7 @@ const els = {
   text: document.getElementById('textInput'),
   send: document.getElementById('sendBtn'),
   attach: document.getElementById('attachBtn'),
+  imageGen: document.getElementById('imageGenBtn'),
   file: document.getElementById('fileInput'),
   preview: document.getElementById('preview'),
   previewImg: document.getElementById('previewImg'),
@@ -1152,55 +1158,22 @@ function renderCurrentChat(){
   }
   chat.messages.forEach((m, i) => renderStoredMessage(m, i));
 }
-function renderStoredMessage(m, messageIndex = -1){
+function renderStoredMessage(msg){
   const div = document.createElement('div');
-  div.className = 'msg ' + (m.role === 'user' ? 'user' : 'ai');
-  const textPart = (m.parts || []).find(p => typeof p.text === 'string');
-  if(textPart) div.appendChild(document.createTextNode(textPart.text));
-  const imgPart = (m.parts || []).find(p => p.inline_data);
-  if(imgPart){
+  div.className = 'msg ' + (msg.role === 'user' ? 'user' : msg.role === 'model' ? 'ai' : 'system');
+  const text = (msg.parts || []).find(p => typeof p?.text === 'string')?.text;
+  if(text) div.appendChild(document.createTextNode(text));
+  const generated = msg.generatedImage || (msg.parts || []).find(p => p?.generatedImage)?.generatedImage;
+  if(generated){
     const img = document.createElement('img');
-    img.className = 'attach';
-    img.src = `data:${imgPart.inline_data.mime_type};base64,${imgPart.inline_data.data}`;
+    img.className = 'generatedImage';
+    img.src = generated;
+    img.alt = 'Imagem gerada pela Kasane';
     div.appendChild(img);
   }
-  if(m.sources && m.sources.length){
-    const src = document.createElement('div');
-    src.className = 'sources';
-    src.innerHTML = '<div class="srcTitle">🔎 Pesquisado na internet — fontes:</div>' +
-      m.sources.map(s => `<a href="${s.url}" target="_blank" rel="noopener"></a>`).join('');
-    src.querySelectorAll('a').forEach((a, i) => { a.textContent = m.sources[i].title || m.sources[i].url; });
-    div.appendChild(src);
-  }
-
-  if(m.role === 'user' && messageIndex >= 0){
-    const actions = document.createElement('div');
-    actions.className = 'messageActions';
-    const editBtn = document.createElement('button');
-    editBtn.type = 'button';
-    editBtn.className = 'messageActionBtn';
-    editBtn.textContent = '✏️ Editar';
-    editBtn.title = 'Editar esta mensagem e escrever novamente';
-    editBtn.addEventListener('click', () => startEditMessage(messageIndex));
-    actions.appendChild(editBtn);
-    div.appendChild(actions);
-  }
-
-  if(m.role === 'model' && m.finishReason === 'MAX_TOKENS'){
-    const actions = document.createElement('div');
-    actions.className = 'messageActions';
-    const continueBtn = document.createElement('button');
-    continueBtn.type = 'button';
-    continueBtn.className = 'messageActionBtn';
-    continueBtn.textContent = '↻ Continuar resposta';
-    continueBtn.title = 'Pedir para a Kasane continuar a resposta';
-    continueBtn.addEventListener('click', () => continueResponse(messageIndex));
-    actions.appendChild(continueBtn);
-    div.appendChild(actions);
-  }
-
   els.chat.appendChild(div);
   els.chat.scrollTop = els.chat.scrollHeight;
+  return div;
 }
 function startEditMessage(messageIndex){
   const chat = getCurrentChat();
@@ -1757,8 +1730,49 @@ els.searchAttachRemove.addEventListener('click', () => {
   els.searchAttachChip.style.display = 'none';
 });
 
+// ================= Geração de imagens =================
+async function generateImage(){
+  const prompt = els.text.value.trim();
+  if(!prompt) return;
+  const chat = getCurrentChat();
+  if(!chat) return;
+
+  addMessage('user', `🎨 ${prompt}`);
+  els.text.value=''; autoGrow();
+  els.imageGen.disabled=true; els.imageGen.classList.add('imageGenBusy');
+  setExpression('thinking'); addTyping();
+
+  try{
+    const res = await fetch(IMAGE_API_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({prompt})
+    });
+    const data = await res.json();
+    removeTyping();
+    if(!res.ok) throw Object.assign(new Error(data?.error || `Erro HTTP ${res.status}`), {status:res.status, response:data});
+
+    const image = data?.image;
+    if(!image) throw new Error('O Gemini não retornou uma imagem.');
+
+    const userMsg={role:'user',parts:[{text:`🎨 ${prompt}`}]};
+    const aiMsg={role:'model',parts:[{text:'Aqui está a imagem que você pediu!'}],generatedImage:image};
+    chat.messages.push(userMsg, aiMsg);
+    renderStoredMessage(aiMsg);
+    setExpression('happy');
+    await saveCurrentChat();
+  }catch(err){
+    removeTyping();
+    setExpression('serious');
+    addErrorBubble(`Não consegui gerar a imagem: ${err?.response?.error || err?.message || 'erro desconhecido'}`);
+  }finally{
+    els.imageGen.disabled=false; els.imageGen.classList.remove('imageGenBusy');
+  }
+}
+
 // ================= Eventos gerais =================
 els.send.addEventListener('click', sendMessage);
+els.imageGen?.addEventListener('click', generateImage);
 els.text.addEventListener('input', autoGrow);
 els.text.addEventListener('keydown', (e) => { if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); } });
 els.attach.addEventListener('click', () => els.file.click());

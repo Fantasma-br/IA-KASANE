@@ -1439,7 +1439,7 @@ async function sendMessage(){
 
   // Detecta pedidos claros de geração de imagem e usa o endpoint de imagens diretamente.
   // Assim a Kasane não precisa apenas reconhecer o pedido pelo texto do Gemini.
-  const imageRequest = text && /\b(crie|criar|gere|gerar|faça|faca|fazer|desenhe|desenhar|produza|produzir|gere uma imagem|crie uma imagem|faça uma imagem|faca uma imagem)\b.*\b(imagem|foto|desenho|ilustração|ilustracao|arte|figura|avatar)\b/i.test(text);
+  const imageRequest = text && /\b(crie|cria|criar|gere|gerar|gera|faça|faca|fazer|faz|desenhe|desenhar|desenha|produza|produzir|produz)\b[\s\S]*\b(imagem|foto|desenho|ilustração|ilustracao|arte|figura|avatar)\b/i.test(text);
   if(imageRequest && !pendingImage){
     await generateImage(text);
     return;
@@ -1784,7 +1784,7 @@ async function generateImage(promptOverride = null){
 
 // ================= Eventos gerais =================
 els.send.addEventListener('click', sendMessage);
-els.imageGen?.addEventListener('click', generateImage);
+els.imageGen?.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); generateImage(); });
 els.text.addEventListener('input', autoGrow);
 els.text.addEventListener('keydown', (e) => { if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); } });
 els.attach.addEventListener('click', () => els.file.click());

@@ -1749,7 +1749,6 @@ async function generateImage(promptOverride = null){
   const chat = getCurrentChat();
   if(!chat) return;
 
-  addMessage('user', `🎨 ${prompt}`);
   els.text.value=''; autoGrow();
   els.imageGen.disabled=true; els.imageGen.classList.add('imageGenBusy');
   setExpression('thinking'); addTyping();
@@ -1770,7 +1769,7 @@ async function generateImage(promptOverride = null){
     const userMsg={role:'user',parts:[{text:`🎨 ${prompt}`}]};
     const aiMsg={role:'model',parts:[{text:'Aqui está a imagem que você pediu!'}],generatedImage:image};
     chat.messages.push(userMsg, aiMsg);
-    renderStoredMessage(aiMsg);
+    renderCurrentChat();
     setExpression('happy');
     await saveCurrentChat();
   }catch(err){
@@ -1784,7 +1783,12 @@ async function generateImage(promptOverride = null){
 
 // ================= Eventos gerais =================
 els.send.addEventListener('click', sendMessage);
-els.imageGen?.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); generateImage(); });
+els.imageGen?.addEventListener('click', async (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  if (els.imageGen.disabled) return;
+  await generateImage();
+});
 els.text.addEventListener('input', autoGrow);
 els.text.addEventListener('keydown', (e) => { if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); } });
 els.attach.addEventListener('click', () => els.file.click());

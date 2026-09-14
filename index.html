@@ -194,6 +194,18 @@
     color: var(--text); border-radius:8px; padding:5px 10px; font-size:12px; cursor:pointer;
   }
   .retryBtn:hover{ border-color: var(--denim); }
+  .generatedImage{display:block;max-width:min(520px,100%);max-height:520px;border-radius:12px;margin-top:8px;object-fit:contain;background:rgba(0,0,0,.12);}
+  #imageOverlay .modal{width:min(760px,94vw);height:min(760px,88vh);display:flex;flex-direction:column;}
+  #imageChatWrap{flex:1;min-height:0;overflow-y:auto;padding:10px 4px;display:flex;flex-direction:column;gap:10px;}
+  #imageChatWrap .imageBubble{max-width:82%;padding:10px 14px;border-radius:14px;line-height:1.4;font-size:14px;white-space:pre-wrap;}
+  #imageChatWrap .imageBubble.user{align-self:flex-end;background:var(--bubble-user);}
+  #imageChatWrap .imageBubble.ai{align-self:flex-start;background:var(--bubble-ai);}
+  #imageChatWrap .imageBubble.error{align-self:center;color:var(--warn);border:1px solid rgba(224,168,58,.3);background:rgba(224,168,58,.08);}
+  #imageChatWrap .imageBubble img{display:block;max-width:100%;max-height:430px;border-radius:12px;margin-top:8px;}
+  #imagePromptRow{display:flex;gap:8px;margin-top:10px;}
+  #imagePromptInput{flex:1;background:var(--bg-soft);border:1px solid var(--border);border-radius:12px;color:var(--text);padding:10px 12px;outline:none;resize:none;min-height:42px;max-height:100px;font-family:inherit;}
+  #imagePromptSend{width:44px;border:0;border-radius:12px;background:var(--hair);color:#fff;font-size:18px;cursor:pointer;}
+  #imagePromptSend:disabled{opacity:.5;cursor:not-allowed;}
   .messageActions{ display:flex; gap:6px; flex-wrap:wrap; margin-top:7px; }
   .messageActionBtn{ border:1px solid var(--border); background:rgba(255,255,255,.06); color:var(--text); border-radius:8px; padding:5px 9px; font-size:11.5px; cursor:pointer; }
   .messageActionBtn:hover{ border-color:var(--denim); background:rgba(255,255,255,.1); }
@@ -654,6 +666,21 @@
     </div>
   </div>
 
+  <!-- ---------- Modal: chat de imagens ---------- -->
+  <div class="overlay" id="imageOverlay">
+    <div class="modal">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <div><h2 style="margin-bottom:3px">🎨 Chat de imagens</h2><p class="hint" style="margin:0">Este chat é separado das conversas normais da Kasane.</p></div>
+        <button class="btnGhost" id="imageClose">Fechar</button>
+      </div>
+      <div id="imageChatWrap"></div>
+      <div id="imagePromptRow">
+        <textarea id="imagePromptInput" rows="1" placeholder="Descreva a imagem que deseja criar..."></textarea>
+        <button id="imagePromptSend" title="Gerar imagem">➤</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ---------- Modal: renomear ---------- -->
   <div class="overlay" id="renameOverlay">
     <div class="modal" style="width:min(360px,90vw)">
@@ -723,6 +750,11 @@ const els = {
   send: document.getElementById('sendBtn'),
   attach: document.getElementById('attachBtn'),
   imageGen: document.getElementById('imageGenBtn'),
+  imageOverlay: document.getElementById('imageOverlay'),
+  imageClose: document.getElementById('imageClose'),
+  imageChatWrap: document.getElementById('imageChatWrap'),
+  imagePromptInput: document.getElementById('imagePromptInput'),
+  imagePromptSend: document.getElementById('imagePromptSend'),
   file: document.getElementById('fileInput'),
   preview: document.getElementById('preview'),
   previewImg: document.getElementById('previewImg'),
@@ -793,11 +825,12 @@ let dbPromise = null;
 function openDB(){
   if(dbPromise) return dbPromise;
   dbPromise = new Promise((resolve, reject) => {
-    const req = indexedDB.open('kasaneDB', 1);
+    const req = indexedDB.open('kasaneDB', 2);
     req.onupgradeneeded = (e) => {
       const db = e.target.result;
       if(!db.objectStoreNames.contains('chats')) db.createObjectStore('chats', { keyPath: 'id' });
       if(!db.objectStoreNames.contains('memories')) db.createObjectStore('memories', { keyPath: 'id' });
+      if(!db.objectStoreNames.contains('imageChats')) db.createObjectStore('imageChats', { keyPath: 'id' });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -1439,9 +1472,9 @@ async function sendMessage(){
 
   // Detecta pedidos claros de geração de imagem e usa o endpoint de imagens diretamente.
   // Assim a Kasane não precisa apenas reconhecer o pedido pelo texto do Gemini.
-  const imageRequest = text && /\b(crie|cria|criar|gere|gerar|gera|faça|faca|fazer|faz|desenhe|desenhar|desenha|produza|produzir|produz)\b[\s\S]*\b(imagem|foto|desenho|ilustração|ilustracao|arte|figura|avatar)\b/i.test(text);
+  const imageRequest = text && /\b(crie|criar|gere|gerar|faça|faca|fazer|desenhe|desenhar|produza|produzir|gere uma imagem|crie uma imagem|faça uma imagem|faca uma imagem)\b.*\b(imagem|foto|desenho|ilustração|ilustracao|arte|figura|avatar)\b/i.test(text);
   if(imageRequest && !pendingImage){
-    await generateImage(text);
+    openImageChat(text);
     return;
   }
 
@@ -1739,56 +1772,97 @@ els.searchAttachRemove.addEventListener('click', () => {
   els.searchAttachChip.style.display = 'none';
 });
 
-// ================= Geração de imagens =================
-async function generateImage(promptOverride = null){
-  let prompt = String(promptOverride ?? els.text.value).trim();
-  if(!prompt){
-    prompt = String(window.prompt('O que você quer que a Kasane crie?') || '').trim();
-  }
-  if(!prompt) return;
-  const chat = getCurrentChat();
-  if(!chat) return;
+// ================= Chat separado de imagens =================
+let imageChat = { id:'main', messages:[] };
+let imageChatsLoaded = false;
 
-  els.text.value=''; autoGrow();
-  els.imageGen.disabled=true; els.imageGen.classList.add('imageGenBusy');
-  setExpression('thinking'); addTyping();
+async function loadImageChat(){
+  if(imageChatsLoaded) return;
+  try{
+    const all = await idbGetAll('imageChats');
+    imageChat = all.find(x => x.id === 'main') || {id:'main',messages:[]};
+    imageChatsLoaded = true;
+  }catch(e){
+    console.warn('Falha ao carregar chat de imagens',e);
+    imageChat = {id:'main',messages:[]};
+    imageChatsLoaded = true;
+  }
+  renderImageChat();
+}
+async function saveImageChat(){
+  try{ await idbPut('imageChats', imageChat); }catch(e){ console.warn('Falha ao salvar chat de imagens',e); }
+}
+function renderImageChat(){
+  if(!els.imageChatWrap) return;
+  els.imageChatWrap.innerHTML='';
+  if(!imageChat.messages.length){
+    const empty=document.createElement('div');
+    empty.className='msg system';
+    empty.textContent='🎨 Aqui ficam somente as imagens e pedidos de imagem. O chat normal da Kasane não aparece aqui.';
+    els.imageChatWrap.appendChild(empty);
+  }
+  imageChat.messages.forEach(m=>{
+    const b=document.createElement('div');
+    b.className='imageBubble '+(m.role==='user'?'user':m.error?'error':'ai');
+    if(m.text) b.appendChild(document.createTextNode(m.text));
+    if(m.image){
+      const img=document.createElement('img'); img.src=m.image; img.alt='Imagem gerada pela Kasane'; b.appendChild(img);
+    }
+    els.imageChatWrap.appendChild(b);
+  });
+  els.imageChatWrap.scrollTop=els.imageChatWrap.scrollHeight;
+}
+async function openImageChat(prefill=''){
+  await loadImageChat();
+  els.imageOverlay?.classList.add('open');
+  if(prefill) els.imagePromptInput.value=prefill;
+  els.imagePromptInput?.focus();
+}
+function closeImageChat(){ els.imageOverlay?.classList.remove('open'); }
+async function generateImage(promptOverride=null){
+  await loadImageChat();
+  const prompt=String(promptOverride ?? els.imagePromptInput?.value ?? '').trim();
+  if(!prompt) return;
+  if(els.imagePromptInput) els.imagePromptInput.value='';
+  if(els.imagePromptSend) els.imagePromptSend.disabled=true;
+
+  imageChat.messages.push({role:'user',text:prompt});
+  renderImageChat();
+  const wait={role:'ai',text:'🎨 Gerando sua imagem...'};
+  imageChat.messages.push(wait); renderImageChat();
 
   try{
-    const res = await fetch(IMAGE_API_URL, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({prompt})
-    });
-    const data = await res.json();
-    removeTyping();
-    if(!res.ok) throw Object.assign(new Error(data?.error || `Erro HTTP ${res.status}`), {status:res.status, response:data});
-
-    const image = data?.image;
-    if(!image) throw new Error('O Gemini não retornou uma imagem.');
-
-    const userMsg={role:'user',parts:[{text:`🎨 ${prompt}`}]};
-    const aiMsg={role:'model',parts:[{text:'Aqui está a imagem que você pediu!'}],generatedImage:image};
-    chat.messages.push(userMsg, aiMsg);
-    renderCurrentChat();
-    setExpression('happy');
-    await saveCurrentChat();
+    const res=await fetch(IMAGE_API_URL,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({prompt})});
+    const raw=await res.text();
+    let data=null;
+    try{ data=raw?JSON.parse(raw):{}; }catch(parseErr){
+      const preview=raw.replace(/\s+/g,' ').slice(0,180);
+      throw Object.assign(new Error(`O servidor de imagens não retornou JSON. Resposta: ${preview || 'vazia'}`),{status:res.status});
+    }
+    if(!res.ok) throw Object.assign(new Error(data?.error || `Erro HTTP ${res.status}`),{status:res.status,response:data});
+    const image=data?.image;
+    if(!image) throw new Error(data?.error || 'O Gemini não retornou uma imagem.');
+    imageChat.messages.pop();
+    imageChat.messages.push({role:'ai',text:'Aqui está a imagem que você pediu! 🖼️',image});
+    renderImageChat();
+    await saveImageChat();
   }catch(err){
-    removeTyping();
-    setExpression('serious');
-    addErrorBubble(`Não consegui gerar a imagem: ${err?.response?.error || err?.message || 'erro desconhecido'}`);
+    imageChat.messages.pop();
+    imageChat.messages.push({role:'ai',error:true,text:`⚠️ Não consegui gerar a imagem: ${err?.response?.error || err?.message || 'erro desconhecido'}`});
+    renderImageChat();
+    await saveImageChat();
   }finally{
-    els.imageGen.disabled=false; els.imageGen.classList.remove('imageGenBusy');
+    if(els.imagePromptSend) els.imagePromptSend.disabled=false;
   }
 }
 
 // ================= Eventos gerais =================
 els.send.addEventListener('click', sendMessage);
-els.imageGen?.addEventListener('click', async (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-  if (els.imageGen.disabled) return;
-  await generateImage();
-});
+els.imageGen?.addEventListener('click', () => openImageChat());
+els.imageClose?.addEventListener('click', closeImageChat);
+els.imageOverlay?.addEventListener('click', e => { if(e.target===els.imageOverlay) closeImageChat(); });
+els.imagePromptSend?.addEventListener('click', () => generateImage());
+els.imagePromptInput?.addEventListener('keydown', e => { if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); generateImage(); } });
 els.text.addEventListener('input', autoGrow);
 els.text.addEventListener('keydown', (e) => { if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); } });
 els.attach.addEventListener('click', () => els.file.click());

@@ -1741,7 +1741,10 @@ els.searchAttachRemove.addEventListener('click', () => {
 
 // ================= Geração de imagens =================
 async function generateImage(promptOverride = null){
-  const prompt = String(promptOverride ?? els.text.value).trim();
+  let prompt = String(promptOverride ?? els.text.value).trim();
+  if(!prompt){
+    prompt = String(window.prompt('O que você quer que a Kasane crie?') || '').trim();
+  }
   if(!prompt) return;
   const chat = getCurrentChat();
   if(!chat) return;

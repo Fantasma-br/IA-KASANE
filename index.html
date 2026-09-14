@@ -1436,6 +1436,15 @@ async function sendMessage(){
   const text = els.text.value.trim();
   if(!text && !pendingImage) return;
   if(text) analyzeEmotion(text);
+
+  // Detecta pedidos claros de geração de imagem e usa o endpoint de imagens diretamente.
+  // Assim a Kasane não precisa apenas reconhecer o pedido pelo texto do Gemini.
+  const imageRequest = text && /\b(crie|criar|gere|gerar|faça|faca|fazer|desenhe|desenhar|produza|produzir|gere uma imagem|crie uma imagem|faça uma imagem|faca uma imagem)\b.*\b(imagem|foto|desenho|ilustração|ilustracao|arte|figura|avatar)\b/i.test(text);
+  if(imageRequest && !pendingImage){
+    await generateImage(text);
+    return;
+  }
+
   const chat = getCurrentChat();
   if(!chat) return;
 
@@ -1731,8 +1740,8 @@ els.searchAttachRemove.addEventListener('click', () => {
 });
 
 // ================= Geração de imagens =================
-async function generateImage(){
-  const prompt = els.text.value.trim();
+async function generateImage(promptOverride = null){
+  const prompt = String(promptOverride ?? els.text.value).trim();
   if(!prompt) return;
   const chat = getCurrentChat();
   if(!chat) return;

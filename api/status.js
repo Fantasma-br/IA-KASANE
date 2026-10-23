@@ -1,5 +1,14 @@
-export default async function handler(req, res) {
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Método não permitido.' });
-  const configured = !!process.env.GEMINI_API_KEY;
-  return res.status(200).json({ ok: configured, keyConfigured: configured, model: process.env.GEMINI_MODEL || 'gemini-3.5-flash' });
-}
+const { cors, json } = require('./_common');
+
+// O front espera: { ok: boolean, keyConfigured: boolean }
+module.exports = async (req, res) => {
+  if (cors(req, res)) return;
+  const keyConfigured = Boolean(process.env.GEMINI_API_KEY);
+  return json(res, 200, {
+    ok: keyConfigured,
+    keyConfigured,
+    model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+    imageModel: process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image',
+    search: Boolean(process.env.TAVILY_API_KEY || process.env.BRAVE_API_KEY) ? 'api' : 'duckduckgo',
+  });
+};
